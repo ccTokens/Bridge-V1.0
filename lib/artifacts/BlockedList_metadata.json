@@ -1,0 +1,286 @@
+{
+	"compiler": {
+		"version": "0.8.9+commit.e5eed63a"
+	},
+	"language": "Solidity",
+	"output": {
+		"abi": [
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_configurationController",
+						"type": "address"
+					}
+				],
+				"stateMutability": "nonpayable",
+				"type": "constructor"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "AddBlockList",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "previousOwner",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "newOwner",
+						"type": "address"
+					}
+				],
+				"name": "OwnershipTransferred",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "RemoveBlockList",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "_owner",
+						"type": "address"
+					},
+					{
+						"indexed": false,
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "SetConfigAdmin",
+				"type": "event"
+			},
+			{
+				"anonymous": false,
+				"inputs": [
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "previousOwner",
+						"type": "address"
+					},
+					{
+						"indexed": true,
+						"internalType": "address",
+						"name": "newOwner",
+						"type": "address"
+					}
+				],
+				"name": "TransferPendingOwner",
+				"type": "event"
+			},
+			{
+				"inputs": [],
+				"name": "acceptOwnership",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address[]",
+						"name": "_accountList",
+						"type": "address[]"
+					}
+				],
+				"name": "addBlockList",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "configurationController",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_account",
+						"type": "address"
+					}
+				],
+				"name": "isBlockedList",
+				"outputs": [
+					{
+						"internalType": "bool",
+						"name": "",
+						"type": "bool"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "owner",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [],
+				"name": "pendingOwner",
+				"outputs": [
+					{
+						"internalType": "address",
+						"name": "",
+						"type": "address"
+					}
+				],
+				"stateMutability": "view",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address[]",
+						"name": "_accountList",
+						"type": "address[]"
+					}
+				],
+				"name": "removeBlockList",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "_configurationController",
+						"type": "address"
+					}
+				],
+				"name": "setConfigurationController",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			},
+			{
+				"inputs": [
+					{
+						"internalType": "address",
+						"name": "newOwner",
+						"type": "address"
+					}
+				],
+				"name": "transferOwnership",
+				"outputs": [],
+				"stateMutability": "nonpayable",
+				"type": "function"
+			}
+		],
+		"devdoc": {
+			"kind": "dev",
+			"methods": {
+				"acceptOwnership()": {
+					"details": "Allows the pendingOwner address to finalize the transfer."
+				},
+				"owner()": {
+					"details": "Returns the address of the current owner."
+				},
+				"transferOwnership(address)": {
+					"details": "Allows the current owner to set the pendingOwner address.",
+					"params": {
+						"newOwner": "The address to transfer ownership to."
+					}
+				}
+			},
+			"version": 1
+		},
+		"userdoc": {
+			"kind": "user",
+			"methods": {},
+			"version": 1
+		}
+	},
+	"settings": {
+		"compilationTarget": {
+			"lib/blockedList.sol": "BlockedList"
+		},
+		"evmVersion": "london",
+		"libraries": {},
+		"metadata": {
+			"bytecodeHash": "ipfs"
+		},
+		"optimizer": {
+			"enabled": true,
+			"runs": 200
+		},
+		"remappings": []
+	},
+	"sources": {
+		"lib/Context.sol": {
+			"keccak256": "0xbcd1b84243c2605907093cdc4210911bea5f1ecffd7a23182c2bf55a71f76077",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://71814de706d323afb27578979eb0ed8a113cec6a934cc69833ee77a3f8f8a330",
+				"dweb:/ipfs/QmPk1xuFLRrqpZgAbYHfX5vjL5kFue8aZY4y53ok7iQVc4"
+			]
+		},
+		"lib/Ownable.sol": {
+			"keccak256": "0x52c5806d0009a6fa4c565ec78942099554d619a4bfd54735cb86eeeb2f1bd800",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://5dc6acb85c115f552002fff9353355a2204843e028b7fe7d88b861e41c334c6b",
+				"dweb:/ipfs/QmXNvQXySbd3qQfg3Xmwsp3W9CP7GbBN9utLMk5BU46mMn"
+			]
+		},
+		"lib/blockedList.sol": {
+			"keccak256": "0xfb225a6f8a7d4b7d157a9948e3b88bca77b906fd59899ca46ee51ffeb52fd58d",
+			"license": "MIT",
+			"urls": [
+				"bzz-raw://384b6a9ef1f298315794719bc8718b057006c530318bf7ba3f87486cbd01feea",
+				"dweb:/ipfs/QmWrh3utksJkgKZmcVhUzp1vZyAHWaxmRB1troeuFpaQ2Y"
+			]
+		}
+	},
+	"version": 1
+}
