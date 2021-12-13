@@ -10,7 +10,7 @@ contract BlockedList is Ownable {
     constructor(address _configurationController){
         configurationController = _configurationController;
     }
-    function isBlockedList(address _account) public view  returns(bool) {
+    function isBlocked(address _account) public view  returns(bool) {
         return blockList[_account];
     }
     modifier onlyConfigurationController() {

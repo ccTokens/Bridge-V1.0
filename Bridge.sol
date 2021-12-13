@@ -13,16 +13,16 @@ interface Controller {
 }
 
 interface BlockedList{
-    function isBlockedList(address _account) external view  returns(bool);
+    function isBlocked(address _account) external view  returns(bool);
 }
 
 contract Bridge is Ownable{
     using SafeERC20 for IERC20;
 
     struct PairInfo{
-        bool pauseStatus;
-        bool bindingStatus;
-        uint256 minAmount;
+        bool pauseStatus;   // Whether the exchange pair is paused.
+        bool bindingStatus; // Whether it is a supported exchange pair.
+        uint256 minAmount;  // Minimum number of this exchange pair.
     }
 
     struct CctokenConfig {
@@ -31,37 +31,37 @@ contract Bridge is Ownable{
     }
 
     struct ExchangeInfo{
-        address _tokenA;
-        address _tokenB;
-        uint256 _chainIDB;
-        uint256 _amount;
-        bytes32 _r;
-        bytes32 _s;
-        uint8 _v;
-        uint256 _deadline;
-        uint256 _fee;
-        bytes16 _challenge;
+        address _tokenA;    // origin token.
+        address _tokenB;    // target token in another chain.
+        uint256 _chainIDB;  // to which chain.
+        uint256 _amount;    // The amount of original token.
+        bytes32 _r;         // signature r.
+        bytes32 _s;         // signature s.
+        uint8 _v;           // signature v.
+        uint256 _deadline;  // expiration time.
+        uint256 _fee;       // The specific amount of the fee.
+        bytes16 _challenge; // mask.
     }
 
-    struct TransferAndMintInfo{
-        address _tokenA;
-        address _tokenB;
-        uint256 _chainIDA;
-        uint256 _amount;
-        address _to;
+    struct ConfirmInfo{
+        address _tokenA;    // the token which confirm has received.
+        address _tokenB;    // the token which user want to bridge.
+        uint256 _chainIDA;  // received from bridged chain.
+        uint256 _amount;    // received amount.
+        address _to;        // To whom will tokenB be issued.
         uint256 _fee;
-        uint256 _orderID;
+        uint256 _orderID;   // order id.
     }
 
-    uint256 public ID;
-    address public feeWallet;
-    address public storehouse;
-    address public signatoryAddress;
+    uint256 public ID;                      // Cumulative total number of orders initiated redemption requests from bridge.
+    address public feeTo;                   // charge wallet.
+    address public repository;              // storehouse.
+    address public relayer;                 // The signature address of the relayer.
     address public WETH;
-    address public configurationController;
+    address public configurationController; // Configuration management address of the bridge.
     BlockedList public blockedList;
     bool internal isInitialized;
-    mapping(address => mapping(uint256 => mapping(address => PairInfo))) public pairBinding;
+    mapping(address => mapping(uint256 => mapping(address => PairInfo))) public pairs;
     mapping(uint256 => bool) public orderIDStatus;
     mapping(address => CctokenConfig) public ccTokenInfo;
     
@@ -79,7 +79,7 @@ contract Bridge is Ownable{
         uint256 _fee
     );
 
-    event TransferAndMint(
+    event Confirm(
         uint256 indexed _orderID,
         address indexed _sourceAccount,
         address _tokenA,
@@ -95,28 +95,44 @@ contract Bridge is Ownable{
     event SignatoryAddrReset(address _before, address _current);
 
     event SetConfigAdmin(address _owner, address _account);
-    event SetBindingToken(address _tokenA, uint256 _chainID, address _tokenB, bool _pauseStatus, bool _bindingStatus, uint256 _minAmount);
+    event SetPair(address _tokenA, uint256 _chainID, address _tokenB, bool _pauseStatus, bool _bindingStatus, uint256 _minAmount);
     event SetCcToken(address _cctoken, bool _status);
-    event Initialize(address _owner, address _storehouse, address _signatoryAddress, address _configurationController, address _feeWallet, address _WETH,address _blockedList);
+    event Initialize(address _owner, address _repository, address _relayer, address _configurationController, address _feeTo, address _WETH,address _blockedList);
     event SetControllerAddr(address _cctoken, address _controller);
-    // constructor(address _storehouse, address _WETH, address _signatoryAddress, address _configurationController, BlockedList _blockedList) {
-    //     initialize(_storehouse, _signatoryAddress, _WETH, _blockedList);
-    //     configurationController = _configurationController;
-    // }
 
     modifier onlyConfigurationController() {
-        require(msg.sender== configurationController, "caller is not the admin");
+        require(msg.sender== configurationController, "No permission");
         _;
     }
 
+    /**
+     * @dev Initialization function, can only be used once to initialize the necessary configuration info when deploy the proxy contract.
+     */
+    function initialize(address _owner, address _repository, address _relayer, address _configurationController, address _feeTo, address _WETH, BlockedList _blockedList) external {
+        require(!isInitialized, "Initialized");
+        require(_repository != address(0), "repository: address 0");
+        require(_relayer != address(0), "relayer: address 0");
+        require(_WETH != address(0), "WETH: address 0");
+        require(address(_blockedList) != address(0), "blocklist: address 0");
+        ownerInit(_owner);
+        repository = _repository;
+        relayer = _relayer;
+        configurationController = _configurationController;
+        feeTo = _feeTo;
+        WETH = _WETH;
+        blockedList = _blockedList;
+        isInitialized = true;
+        emit Initialize(_owner, _repository, _relayer, _configurationController, _feeTo, _WETH, address(_blockedList));
+    }
 
-    function setBindingToken(address _tokenA, uint256 _chainID, address _tokenB, bool _pauseStatus, 
+
+    function setPair(address _tokenA, uint256 _chainID, address _tokenB, bool _pauseStatus, 
     bool _bindingStatus, uint256 _minAmount) external onlyConfigurationController{
-        PairInfo storage pair = pairBinding[_tokenA][_chainID][_tokenB];
+        PairInfo storage pair = pairs[_tokenA][_chainID][_tokenB];
         pair.pauseStatus = _pauseStatus;
         pair.bindingStatus = _bindingStatus;
         pair.minAmount = _minAmount;
-        emit SetBindingToken(_tokenA, _chainID, _tokenB, _pauseStatus, _bindingStatus, _minAmount);
+        emit SetPair(_tokenA, _chainID, _tokenB, _pauseStatus, _bindingStatus, _minAmount);
     }
 
     function setCcToken(address _cctoken, bool _status) external onlyConfigurationController{
@@ -136,52 +152,40 @@ contract Bridge is Ownable{
         emit SetControllerAddr(_cctoken, _controller);
     }
 
-    function initialize(address _owner, address _storehouse, address _signatoryAddress, address _configurationController, address _feeWallet, address _WETH, BlockedList _blockedList) external {
-        require(!isInitialized, "Can only be initialized once");
-        require(_storehouse != address(0), "the storehouse is zero address");
-        require(_signatoryAddress != address(0), "the signatoryAddress is zero address");
-        require(_WETH != address(0), "the WETH is zero address");
-        require(address(_blockedList) != address(0), "the blacklist address is zero address");
-        ownerInit(_owner);
-        storehouse = _storehouse;
-        signatoryAddress = _signatoryAddress;
-        configurationController = _configurationController;
-        feeWallet = _feeWallet;
-        WETH = _WETH;
-        blockedList = _blockedList;
-        isInitialized = true;
-        emit Initialize(_owner, _storehouse, _signatoryAddress, _configurationController, _feeWallet, _WETH, address(_blockedList));
-    }
-
-    function setSignatoryAddr(address _signer) external onlyConfigurationController {
-        require(_signer != address(0), "the signer is zero address");
-        require(signatoryAddress != _signer);
-        emit SignatoryAddrReset(signatoryAddress , _signer);
-        signatoryAddress = _signer;
+    function setSigner(address _signer) external onlyConfigurationController {
+        require(_signer != address(0), "signer: address 0");
+        require(relayer != _signer);
+        emit SignatoryAddrReset(relayer , _signer);
+        relayer = _signer;
     }
 
     function setBlockList(BlockedList _blockedList) external onlyConfigurationController {
-        require(address(_blockedList) != address(0), "the storehouse is zero address");
+        require(address(_blockedList) != address(0), "blockedList: address 0");
         require(blockedList != _blockedList, "Repeat setting");
         emit BlockListReset(address(blockedList), address(_blockedList));
         blockedList = _blockedList;
     }
 
-    function setStorehouse(address _storehouse) external onlyConfigurationController {
-        require(_storehouse != address(0), "the storehouse is zero address");
-        require(storehouse != _storehouse);
-        emit StoreHouseReset(storehouse , _storehouse);
-        storehouse = _storehouse;
+    function setRepository(address _repository) external onlyConfigurationController {
+        require(_repository != address(0), "repository: address 0");
+        require(repository != _repository);
+        emit StoreHouseReset(repository , _repository);
+        repository = _repository;
     }
 
+    /**
+     * @dev Set the controller of the bridge, only the owner has this permission.
+     */
     function setConfigurationController(address _configurationController) external onlyOwner{
-        require(_configurationController != address(0), "the account is zero address");
+        require(_configurationController != address(0), "controller: address 0");
         emit SetConfigAdmin(configurationController, _configurationController);
         configurationController = _configurationController;
 
     }
 
-
+    /**
+     * @dev Internal function, get the chainID.
+     */
     function getChainId() internal view returns(uint256){
         uint256 chainId;
         assembly {
@@ -190,6 +194,9 @@ contract Bridge is Ownable{
         return chainId;
     }
 
+    /**
+     * @dev Internal function, verify the signature.
+     */
     function checkFee(ExchangeInfo memory info) view internal {
         bytes  memory salt=abi.encodePacked(info._tokenA, info._tokenB, getChainId(), info._chainIDB, info._amount, info._deadline, info._fee, info._challenge);
         bytes  memory Message=abi.encodePacked(
@@ -199,27 +206,37 @@ contract Bridge is Ownable{
                 );
         bytes32 digest = keccak256(Message);
         address signer=ecrecover(digest, info._v, info._r, info._s);
-        require(signer != address(0), "0 address");
-        require(signer == signatoryAddress, "invalid signature");
+        require(signer != address(0), "signer: address 0");
+        require(signer == relayer, "invalid signature");
     }
-    
+
+    /**
+     * @dev The entry function for the user to initiate a cross-chain exchange order. And the relayer is required 
+     * to sign the fee of the cross-chain order.
+     */
     function exchange(ExchangeInfo memory info) public payable returns(bool){
-        require(!blockedList.isBlockedList(msg.sender), "the caller is blacklist address");
+        require(!blockedList.isBlocked(msg.sender), "this address is blocked");
         require(info._amount >= info._fee, "the amount less than fee");
         require(info._deadline >= block.timestamp, "expired fee");
-        PairInfo memory pair = pairBinding[info._tokenA][info._chainIDB][info._tokenB];
-        require(!pair.pauseStatus, "the pair is in pause");
+        PairInfo memory pair = pairs[info._tokenA][info._chainIDB][info._tokenB];
+        require(!pair.pauseStatus, "the pair is disable");
         require(pair.bindingStatus, "invalid pair");
-        require(info._amount >= pair.minAmount, "Below the minimum amount limit");
+        require(info._amount >= pair.minAmount, "Less than the minimum amount");
 
         checkFee(info);
         uint256 _orderID = getChainId() << 240 | info._chainIDB << 224 | uint256(ID) << 160;
         ID++;
-        uint256 realAmount = info._amount - info._fee;
+        uint256 amount0 = info._amount - info._fee;
+        /**
+         * Separate processing according to the three types of `_tokenA` (origin token).
+         * 1. ccToken (burn)
+         * 2. eth/bch (exchange into WETH/WBHC and transfer to repository)
+         * 3. narmal ERC20 Token (transfer to repository directory)
+         */
         if (ccTokenInfo[info._tokenA].isCcToken){ 
-            IERC20(info._tokenA).safeTransferFrom(msg.sender, address(this), realAmount);
-            IERC20(info._tokenA).safeTransferFrom(msg.sender, feeWallet, info._fee);
-            IERC20(info._tokenA).burn(realAmount);
+            IERC20(info._tokenA).safeTransferFrom(msg.sender, address(this), amount0);
+            IERC20(info._tokenA).safeTransferFrom(msg.sender, feeTo, info._fee);
+            IERC20(info._tokenA).burn(amount0);
             emit Exchange(_orderID, msg.sender, info._tokenA, info._tokenB, getChainId(), info._chainIDB, info._amount, info._deadline, info._fee);
             return true;
         }
@@ -228,50 +245,70 @@ contract Bridge is Ownable{
             require(msg.value == info._amount, "invalid amount");
             uint256 ethAmount = msg.value;
             IWETH(WETH).deposit{value:ethAmount}();
-            IERC20(WETH).safeTransfer(storehouse, ethAmount - info._fee);
-            IERC20(WETH).safeTransfer(feeWallet, info._fee);
+            IERC20(WETH).safeTransfer(repository, ethAmount - info._fee);
+            IERC20(WETH).safeTransfer(feeTo, info._fee);
             emit Exchange(_orderID, msg.sender, info._tokenA, info._tokenB, getChainId(), info._chainIDB, ethAmount, info._deadline, info._fee);
             return true;
         }
-        IERC20(info._tokenA).safeTransferFrom(msg.sender, storehouse, realAmount);
-        IERC20(info._tokenA).safeTransferFrom(msg.sender, feeWallet, info._fee);
+        IERC20(info._tokenA).safeTransferFrom(msg.sender, repository, amount0);
+        IERC20(info._tokenA).safeTransferFrom(msg.sender, feeTo, info._fee);
         emit Exchange(_orderID, msg.sender, info._tokenA, info._tokenB, getChainId(), info._chainIDB, info._amount, info._deadline, info._fee);
         return true;
     }
 
-    function transferAndMint(TransferAndMintInfo memory info) external onlyConfigurationController returns(bool){
-        PairInfo memory pair = pairBinding[info._tokenB][info._chainIDA][info._tokenA];
-        require(!blockedList.isBlockedList(info._to), "the caller or to address is blacklist address");
+    /**
+     * @dev After confirming the user's order in the relay service of the cross-chain bridge, 
+     * the brige controller will call this function to issue/transfer tokens to the user on the target chain.
+     */
+    function confirm(ConfirmInfo memory info) external onlyConfigurationController returns(bool){
+        // Check the information of exchange, include fee, amount, pairinfo etc.
+        PairInfo memory pair = pairs[info._tokenB][info._chainIDA][info._tokenA];
+        require(!blockedList.isBlocked(info._to), "the caller or to address is blacklist address");
         require(!orderIDStatus[info._orderID], "the orderID already finished");
         require(info._amount >= info._fee, "the amount less than fee");
-        uint256 realAmount =  info._amount - info._fee;
+        uint256 amount0 =  info._amount - info._fee;
         require(!pair.pauseStatus, "the pair is in pause");
         require(pair.bindingStatus, "invalid pair");
         require(info._amount >= pair.minAmount, "below the minimum amount limit");
         orderIDStatus[info._orderID] = true;
+        /**
+         * Separate processing according to the three types of `_tokenB` (target token).
+         * 1. ccToken
+         * 2. eth/bch
+         * 3. narmal ERC20 Token
+         */
         if (ccTokenInfo[info._tokenB].isCcToken) {
             address controller = ccTokenInfo[info._tokenB].controllerAddr;
-            require(Controller(controller).bridgeMint(info._to, realAmount), "mint failed");
-            emit TransferAndMint(info._orderID, msg.sender, info._tokenA, info._tokenB, info._chainIDA, info._amount, info._to, info._fee);
+            require(Controller(controller).bridgeMint(info._to, amount0), "mint failed");
+            emit Confirm(info._orderID, msg.sender, info._tokenA, info._tokenB, info._chainIDA, info._amount, info._to, info._fee);
             return true;
         }
 
         if(info._tokenB == address(0)){
-            IERC20(WETH).safeTransferFrom(storehouse, address(this), realAmount);
-            IWETH(WETH).withdraw(realAmount);
-            payable(info._to).transfer(realAmount);
-            emit TransferAndMint(info._orderID, msg.sender, info._tokenA, info._tokenB, info._chainIDA, info._amount, info._to, info._fee);
+            IERC20(WETH).safeTransferFrom(repository, address(this), amount0);
+            IWETH(WETH).withdraw(amount0);
+            payable(info._to).transfer(amount0);
+            emit Confirm(info._orderID, msg.sender, info._tokenA, info._tokenB, info._chainIDA, info._amount, info._to, info._fee);
             return true;
         }
-        IERC20(info._tokenB).safeTransferFrom(storehouse, info._to, realAmount);
-        emit TransferAndMint(info._orderID, msg.sender, info._tokenA, info._tokenB, info._chainIDA, info._amount, info._to, info._fee);
-        return true;    
+        IERC20(info._tokenB).safeTransferFrom(repository, info._to, amount0);
+        emit Confirm(info._orderID, msg.sender, info._tokenA, info._tokenB, info._chainIDA, info._amount, info._to, info._fee);
+        return true;
     }
 
+    /**
+     * @dev It is used to withdraw the tokens that the user entered into the contract address by mistake.
+     * - Only the owner of the contract has the calling permission.
+     * - `_token` Specify the token contract address.
+     */
     function withdrawToken(address _token) external onlyOwner{
         IERC20(_token).safeTransfer(msg.sender, IERC20(_token).balanceOf(address(this)));
     }
 
+    /**
+     * @dev It is used to withdraw eth/bch that the user entered into the contract address by mistake.
+     * - Only the owner of the contract has the calling permission.
+     */
     function withdrawETH() external payable onlyOwner{
         uint256 value = address(this).balance;
         payable(owner()).transfer(value);
