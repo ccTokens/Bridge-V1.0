@@ -9,20 +9,20 @@ interface IWETH {
 }
 
 interface Controller {
-    function bridgeMint(address to, uint256 amount) external  returns (bool);
+    function bridgeMint(address to, uint256 amount) external returns (bool);
 }
 
 interface BlockedList{
-    function isBlocked(address _account) external view  returns(bool);
+    function isBlocked(address _account) external view returns(bool);
 }
 
 contract Bridge is Ownable{
     using SafeERC20 for IERC20;
 
     struct PairInfo{
-        bool pauseStatus;   // Whether the exchange pair is paused.
-        bool bindingStatus; // Whether it is a supported exchange pair.
-        uint256 minAmount;  // Minimum number of this exchange pair.
+        bool pauseStatus;   // Whether the pair has been disabled.
+        bool bindingStatus; // Whether the pair has been supported.
+        uint256 minAmount;  // Minimum amount to request transaction
     }
 
     struct CctokenConfig {
@@ -31,32 +31,32 @@ contract Bridge is Ownable{
     }
 
     struct ExchangeInfo{
-        address _tokenA;    // origin token.
-        address _tokenB;    // target token in another chain.
-        uint256 _chainIDB;  // to which chain.
-        uint256 _amount;    // The amount of original token.
-        bytes32 _r;         // signature r.
-        bytes32 _s;         // signature s.
-        uint8 _v;           // signature v.
-        uint256 _deadline;  // expiration time.
-        uint256 _fee;       // The specific amount of the fee.
+        address _tokenA;    // The token that request to cross-chain.
+        address _tokenB;    // The token runs on the target chain.
+        uint256 _chainIDB;  // Target chain.
+        uint256 _amount;    // Amount of tokenA.
+        bytes32 _r;         // Signature r.
+        bytes32 _s;         // Signature s.
+        uint8 _v;           // Signature v.
+        uint256 _deadline;  // Expiration time.
+        uint256 _fee;       // Amount of transaction fee.
         bytes16 _challenge; // mask.
     }
 
     struct ConfirmInfo{
-        address _tokenA;    // the token which confirm has received.
-        address _tokenB;    // the token which user want to bridge.
-        uint256 _chainIDA;  // received from bridged chain.
-        uint256 _amount;    // received amount.
-        address _to;        // To whom will tokenB be issued.
+        address _tokenA;    // The token that request to cross-chain.
+        address _tokenB;    // The token runs on the target chain.
+        uint256 _chainIDA;  // The chain that tokenA runs on.
+        uint256 _amount;    // Amount of TokenB to get.
+        address _to;        // Destination address for the tokenB
         uint256 _fee;
-        uint256 _orderID;   // order id.
+        uint256 _orderID;   // Order id.
     }
 
-    uint256 public ID;                      // Cumulative total number of orders initiated redemption requests from bridge.
-    address public feeTo;                   // charge wallet.
-    address public repository;              // storehouse.
-    address public relayer;                 // The signature address of the relayer.
+    uint256 public ID;                      // Cumulative order quantity.
+    address public feeTo;                   // Deposit address of transaction fee.
+    address public repository;              // Reserves address.
+    address public relayer;                 // Address of the relayer.
     address public WETH;
     address public configurationController; // Configuration management address of the bridge.
     BlockedList public blockedList;
@@ -211,8 +211,8 @@ contract Bridge is Ownable{
     }
 
     /**
-     * @dev The entry function for the user to initiate a cross-chain exchange order. And the relayer is required 
-     * to sign the fee of the cross-chain order.
+     * @dev Users can initiate cross-chain requests. And the relayer is required 
+     * to sign the transaction fee of the order.
      */
     function exchange(ExchangeInfo memory info) public payable returns(bool){
         require(!blockedList.isBlocked(msg.sender), "this address is blocked");
@@ -228,10 +228,10 @@ contract Bridge is Ownable{
         ID++;
         uint256 amount0 = info._amount - info._fee;
         /**
-         * Separate processing according to the three types of `_tokenA` (origin token).
+         * Different processing methods according to the three types of `_tokenA`.
          * 1. ccToken (burn)
-         * 2. eth/bch (exchange into WETH/WBHC and transfer to repository)
-         * 3. narmal ERC20 Token (transfer to repository directory)
+         * 2. eth (exchange into WETH and transfer to repository)
+         * 3. standard tokens issued by third parties (transfer to repository directory)
          */
         if (ccTokenInfo[info._tokenA].isCcToken){ 
             IERC20(info._tokenA).safeTransferFrom(msg.sender, address(this), amount0);
@@ -257,8 +257,8 @@ contract Bridge is Ownable{
     }
 
     /**
-     * @dev After confirming the user's order in the relay service of the cross-chain bridge, 
-     * the brige controller will call this function to issue/transfer tokens to the user on the target chain.
+     * @dev After confirming the user's request in the relay service of the cross-chain bridge, 
+     * the brige controller will call this function to mint/transfer tokenB to the destination address on the target chain.
      */
     function confirm(ConfirmInfo memory info) external onlyConfigurationController returns(bool){
         // Check the information of exchange, include fee, amount, pairinfo etc.
@@ -269,13 +269,13 @@ contract Bridge is Ownable{
         uint256 amount0 =  info._amount - info._fee;
         require(!pair.pauseStatus, "the pair is in pause");
         require(pair.bindingStatus, "invalid pair");
-        require(info._amount >= pair.minAmount, "below the minimum amount limit");
+        require(info._amount >= pair.minAmount, "Less than the minimum amount");
         orderIDStatus[info._orderID] = true;
         /**
-         * Separate processing according to the three types of `_tokenB` (target token).
+         * Different processing methods according to the three types of `_tokenB` (target token).
          * 1. ccToken
-         * 2. eth/bch
-         * 3. narmal ERC20 Token
+         * 2. eth
+         * 3. standard tokens issued by third parties
          */
         if (ccTokenInfo[info._tokenB].isCcToken) {
             address controller = ccTokenInfo[info._tokenB].controllerAddr;
@@ -297,17 +297,17 @@ contract Bridge is Ownable{
     }
 
     /**
-     * @dev It is used to withdraw the tokens that the user entered into the contract address by mistake.
-     * - Only the owner of the contract has the calling permission.
-     * - `_token` Specify the token contract address.
+     * @dev Used to withdraw tokens that users have deposited by mistake.
+     * - Only the owner of the contract has the permission.
+     * - `_token` refers to the token contract address.
      */
     function withdrawToken(address _token) external onlyOwner{
         IERC20(_token).safeTransfer(msg.sender, IERC20(_token).balanceOf(address(this)));
     }
 
     /**
-     * @dev It is used to withdraw eth/bch that the user entered into the contract address by mistake.
-     * - Only the owner of the contract has the calling permission.
+     * @dev Used to withdraw ETH that users have deposited by mistake.
+     * - Only the owner of the contract has the permission.
      */
     function withdrawETH() external payable onlyOwner{
         uint256 value = address(this).balance;
