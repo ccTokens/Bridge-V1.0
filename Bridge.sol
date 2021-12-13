@@ -231,7 +231,7 @@ contract Bridge is Ownable{
          * Different processing methods according to the three types of `_tokenA`.
          * 1. ccToken (burn)
          * 2. eth (exchange into WETH and transfer to repository)
-         * 3. standard tokens issued by third parties (transfer to repository directory)
+         * 3. standard tokens issued by third parties (transfer to repository)
          */
         if (ccTokenInfo[info._tokenA].isCcToken){ 
             IERC20(info._tokenA).safeTransferFrom(msg.sender, address(this), amount0);
@@ -261,11 +261,11 @@ contract Bridge is Ownable{
      * the bridge controller will call this function to mint/transfer tokenB to the destination address on the target chain.
      */
     function confirm(ConfirmInfo memory info) external onlyConfigurationController returns(bool){
-        // Check the information of exchange, include fee, amount, pairinfo etc.
+        // Check the information of exchange, including transaction fee, amount, pairinfo etc.
         PairInfo memory pair = pairs[info._tokenB][info._chainIDA][info._tokenA];
         require(!blockedList.isBlocked(info._to), "the caller or to address is blacklist address");
         require(!orderIDStatus[info._orderID], "the orderID already finished");
-        require(info._amount >= info._fee, "the amount less than fee");
+        require(info._amount >= info._fee, "the amount less than transaction fee");
         uint256 amount0 =  info._amount - info._fee;
         require(!pair.pauseStatus, "the pair is in pause");
         require(pair.bindingStatus, "invalid pair");
