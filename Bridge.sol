@@ -174,7 +174,7 @@ contract Bridge is Ownable{
     }
 
     /**
-     * @dev Set the controller of the bridge, only the owner has this permission.
+     * @dev Set the controller of the bridge, only the owner has the permission.
      */
     function setConfigurationController(address _configurationController) external onlyOwner{
         require(_configurationController != address(0), "controller: address 0");
@@ -257,7 +257,7 @@ contract Bridge is Ownable{
     }
 
     /**
-     * @dev After confirming the user's request in the relay service of the cross-chain bridge, 
+     * @dev After relayer confirms the user's cross-chain request, 
      * the brige controller will call this function to mint/transfer tokenB to the destination address on the target chain.
      */
     function confirm(ConfirmInfo memory info) external onlyConfigurationController returns(bool){
