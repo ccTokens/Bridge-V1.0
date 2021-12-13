@@ -90,9 +90,9 @@ contract Bridge is Ownable{
         uint256 _fee
     );
 
-    event StoreHouseReset(address _before, address _current);
+    event RepositoryReset(address _before, address _current);
     event BlockListReset(address _before, address _current);
-    event SignatoryAddrReset(address _before, address _current);
+    event RelayerReset(address _before, address _current);
 
     event SetConfigAdmin(address _owner, address _account);
     event SetPair(address _tokenA, uint256 _chainID, address _tokenB, bool _pauseStatus, bool _bindingStatus, uint256 _minAmount);
@@ -152,11 +152,11 @@ contract Bridge is Ownable{
         emit SetControllerAddr(_cctoken, _controller);
     }
 
-    function setSigner(address _signer) external onlyConfigurationController {
-        require(_signer != address(0), "signer: address 0");
-        require(relayer != _signer);
-        emit SignatoryAddrReset(relayer , _signer);
-        relayer = _signer;
+    function setRelayer(address _relayer) external onlyConfigurationController {
+        require(_relayer != address(0), "relayer: address 0");
+        require(relayer != _relayer);
+        emit RelayerReset(relayer , _relayer);
+        relayer = _relayer;
     }
 
     function setBlockList(BlockedList _blockedList) external onlyConfigurationController {
@@ -169,7 +169,7 @@ contract Bridge is Ownable{
     function setRepository(address _repository) external onlyConfigurationController {
         require(_repository != address(0), "repository: address 0");
         require(repository != _repository);
-        emit StoreHouseReset(repository , _repository);
+        emit RepositoryReset(repository , _repository);
         repository = _repository;
     }
 
