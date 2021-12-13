@@ -47,7 +47,7 @@ contract Bridge is Ownable{
         address _tokenA;    // The token that request to cross-chain.
         address _tokenB;    // The token runs on the target chain.
         uint256 _chainIDA;  // The chain that tokenA runs on.
-        uint256 _amount;    // Amount of TokenB to get.
+        uint256 _amount;    // Amount of tokenA.
         address _to;        // Destination address for the tokenB
         uint256 _fee;
         uint256 _orderID;   // Order id.
@@ -61,6 +61,7 @@ contract Bridge is Ownable{
     address public configurationController; // Configuration management address of the bridge.
     BlockedList public blockedList;
     bool internal isInitialized;
+    
     mapping(address => mapping(uint256 => mapping(address => PairInfo))) public pairs;
     mapping(uint256 => bool) public orderIDStatus;
     mapping(address => CctokenConfig) public ccTokenInfo;
@@ -89,16 +90,34 @@ contract Bridge is Ownable{
         address _to,
         uint256 _fee
     );
-
+    
+    /// @notice An event emitted when a "repository" address changes.
     event RepositoryReset(address _before, address _current);
+
+    /// @notice An event emitted when a "blockedList" address changes.
     event BlockListReset(address _before, address _current);
+
+    /// @notice An event emitted when a "relayer" address changes.
     event RelayerReset(address _before, address _current);
 
+    /// @notice An event emitted when a "feeTo" address changes.
+    event FeeToReset(address _before, address _current);
+
+    /// @notice An event emitted when a "configurationController" address changes.
     event SetConfigAdmin(address _owner, address _account);
+
+    /// @notice An event emitted when a "pairs" sets.
     event SetPair(address _tokenA, uint256 _chainID, address _tokenB, bool _pauseStatus, bool _bindingStatus, uint256 _minAmount);
+    
+    /// @notice An event emitted when a "CcToken" changes its status.
     event SetCcToken(address _cctoken, bool _status);
+    
+    /// @notice An event emitted when the contract initializes its public variables.
     event Initialize(address _owner, address _repository, address _relayer, address _configurationController, address _feeTo, address _WETH,address _blockedList);
+    
+    /// @notice An event emitted when a "CcToken" changes its controller.
     event SetControllerAddr(address _cctoken, address _controller);
+
 
     modifier onlyConfigurationController() {
         require(msg.sender== configurationController, "No permission");
@@ -168,9 +187,16 @@ contract Bridge is Ownable{
 
     function setRepository(address _repository) external onlyConfigurationController {
         require(_repository != address(0), "repository: address 0");
-        require(repository != _repository);
+        require(repository != _repository, "Repeat setting");
         emit RepositoryReset(repository , _repository);
         repository = _repository;
+    }
+
+    function setFeeTo(address _feeTo) external onlyConfigurationController {
+        require(_feeTo != address(0), "feeTo: address 0");
+        require(feeTo != _feeTo, "Repeat setting");
+        emit FeeToReset(feeTo, _feeTo);
+        feeTo = _feeTo;
     }
 
     /**
