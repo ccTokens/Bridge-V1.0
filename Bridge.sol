@@ -216,7 +216,7 @@ contract Bridge is Ownable{
      */
     function exchange(ExchangeInfo memory info) public payable returns(bool){
         require(!blockedList.isBlocked(msg.sender), "this address is blocked");
-        require(info._amount >= info._fee, "the amount less than fee");
+        require(info._amount >= info._fee, "the amount less than transaction fee");
         require(info._deadline >= block.timestamp, "expired fee");
         PairInfo memory pair = pairs[info._tokenA][info._chainIDB][info._tokenB];
         require(!pair.pauseStatus, "the pair is disable");
@@ -263,7 +263,7 @@ contract Bridge is Ownable{
     function confirm(ConfirmInfo memory info) external onlyConfigurationController returns(bool){
         // Check the information of exchange, including transaction fee, amount, pairinfo etc.
         PairInfo memory pair = pairs[info._tokenB][info._chainIDA][info._tokenA];
-        require(!blockedList.isBlocked(info._to), "the caller or to address is blacklist address");
+        require(!blockedList.isBlocked(info._to), "the caller or to address is blocklist address");
         require(!orderIDStatus[info._orderID], "the orderID already finished");
         require(info._amount >= info._fee, "the amount less than transaction fee");
         uint256 amount0 =  info._amount - info._fee;
