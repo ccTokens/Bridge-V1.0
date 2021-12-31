@@ -16,6 +16,11 @@ interface BlockedList{
     function isBlocked(address _account) external view returns(bool);
 }
 
+interface MemberMgr{
+    function repository() external view returns(address);
+    function isMerchant(uint chainid, address addr) external view returns (bool);
+}
+
 contract Bridge is Ownable{
     using SafeERC20 for IERC20;
 
@@ -54,8 +59,8 @@ contract Bridge is Ownable{
     }
 
     uint256 public ID;                      // Cumulative order quantity.
+    address public memberMgr;               // Manager contract of Merchant and repository.
     address public feeTo;                   // Deposit address of transaction fee.
-    address public repository;              // Reserves address.
     address public relayer;                 // Address of the relayer.
     address public WETH;
     address public configurationController; // Configuration management address of the bridge.
@@ -91,8 +96,8 @@ contract Bridge is Ownable{
         uint256 _fee
     );
     
-    /// @notice An event emitted when a "repository" address changes.
-    event RepositoryReset(address _before, address _current);
+    /// @notice An event emitted when a "memberMgr" address changes.
+    event MemberMgrReset(address _before, address _current);
 
     /// @notice An event emitted when a "blockedList" address changes.
     event BlockListReset(address _before, address _current);
@@ -113,7 +118,7 @@ contract Bridge is Ownable{
     event SetCcToken(address _cctoken, bool _status);
     
     /// @notice An event emitted when the contract initializes its public variables.
-    event Initialize(address _owner, address _repository, address _relayer, address _configurationController, address _feeTo, address _WETH,address _blockedList);
+    event Initialize(address _owner, address _memberMgr, address _relayer, address _configurationController, address _feeTo, address _WETH,address _blockedList);
     
     /// @notice An event emitted when a "CcToken" changes its controller.
     event SetControllerAddr(address _cctoken, address _controller);
@@ -127,21 +132,21 @@ contract Bridge is Ownable{
     /**
      * @dev Initialization function, can only be used once to initialize the necessary configuration info when deploy the proxy contract.
      */
-    function initialize(address _owner, address _repository, address _relayer, address _configurationController, address _feeTo, address _WETH, BlockedList _blockedList) external {
+    function initialize(address _owner, address _memberMgr, address _relayer, address _configurationController, address _feeTo, address _WETH, BlockedList _blockedList) external {
         require(!isInitialized, "Initialized");
-        require(_repository != address(0), "repository: address 0");
+        require(memberMgr != address(0), "memberMgr: address 0");
         require(_relayer != address(0), "relayer: address 0");
         require(_WETH != address(0), "WETH: address 0");
         require(address(_blockedList) != address(0), "blocklist: address 0");
         ownerInit(_owner);
-        repository = _repository;
+        memberMgr = _memberMgr;
         relayer = _relayer;
         configurationController = _configurationController;
         feeTo = _feeTo;
         WETH = _WETH;
         blockedList = _blockedList;
         isInitialized = true;
-        emit Initialize(_owner, _repository, _relayer, _configurationController, _feeTo, _WETH, address(_blockedList));
+        emit Initialize(_owner, _memberMgr, _relayer, _configurationController, _feeTo, _WETH, address(_blockedList));
     }
 
 
@@ -185,18 +190,18 @@ contract Bridge is Ownable{
         blockedList = _blockedList;
     }
 
-    function setRepository(address _repository) external onlyConfigurationController {
-        require(_repository != address(0), "repository: address 0");
-        require(repository != _repository, "Repeat setting");
-        emit RepositoryReset(repository , _repository);
-        repository = _repository;
-    }
-
     function setFeeTo(address _feeTo) external onlyConfigurationController {
         require(_feeTo != address(0), "feeTo: address 0");
         require(feeTo != _feeTo, "Repeat setting");
         emit FeeToReset(feeTo, _feeTo);
         feeTo = _feeTo;
+    }
+
+    function setMemberMgr(address _memberMgr) external onlyOwner {
+        require(_memberMgr != address(0), "repository: address 0");
+        require(memberMgr != _memberMgr, "Repeat setting");
+        emit MemberMgrReset(memberMgr , _memberMgr);
+        memberMgr = _memberMgr;
     }
 
     /**
@@ -248,6 +253,7 @@ contract Bridge is Ownable{
         require(!pair.pauseStatus, "the pair is disable");
         require(pair.bindingStatus, "invalid pair");
         require(info._amount >= pair.minAmount, "Less than the minimum amount");
+        require(MemberMgr(memberMgr).isMerchant(info._chainIDB, msg.sender), "invalid merchant");
 
         checkFee(info);
         uint256 _orderID = getChainId() << 240 | info._chainIDB << 224 | uint256(ID) << 160;
@@ -266,6 +272,8 @@ contract Bridge is Ownable{
             emit Exchange(_orderID, msg.sender, info._tokenA, info._tokenB, getChainId(), info._chainIDB, info._amount, info._deadline, info._fee);
             return true;
         }
+        address repository = MemberMgr(memberMgr).repository();
+        require(repository != address(0), "invalid repository");
 
         if (info._tokenA == address(0)){
             require(msg.value == info._amount, "invalid amount");
@@ -296,6 +304,7 @@ contract Bridge is Ownable{
         require(!pair.pauseStatus, "the pair is in pause");
         require(pair.bindingStatus, "invalid pair");
         require(info._amount >= pair.minAmount, "Less than the minimum amount");
+        require(MemberMgr(memberMgr).isMerchant(info._chainIDA, info._to), "invalid merchant");
         orderIDStatus[info._orderID] = true;
         /**
          * Different processing methods according to the three types of `_tokenB` (target token).
@@ -309,6 +318,8 @@ contract Bridge is Ownable{
             emit Confirm(info._orderID, msg.sender, info._tokenA, info._tokenB, info._chainIDA, info._amount, info._to, info._fee);
             return true;
         }
+        address repository = MemberMgr(memberMgr).repository();
+        require(repository != address(0), "invalid repository");
 
         if(info._tokenB == address(0)){
             IERC20(WETH).safeTransferFrom(repository, address(this), amount0);
