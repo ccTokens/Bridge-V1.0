@@ -140,7 +140,7 @@
 						"type": "address"
 					}
 				],
-				"name": "isBlockedList",
+				"name": "isBlocked",
 				"outputs": [
 					{
 						"internalType": "bool",
@@ -251,7 +251,7 @@
 			"bytecodeHash": "ipfs"
 		},
 		"optimizer": {
-			"enabled": true,
+			"enabled": false,
 			"runs": 200
 		},
 		"remappings": []
@@ -274,11 +274,11 @@
 			]
 		},
 		"lib/blockedList.sol": {
-			"keccak256": "0xfb225a6f8a7d4b7d157a9948e3b88bca77b906fd59899ca46ee51ffeb52fd58d",
+			"keccak256": "0x03f4e492f7859f8a864e85328e61173bc66ace3b0ff2bd714d12b86ab3413120",
 			"license": "MIT",
 			"urls": [
-				"bzz-raw://384b6a9ef1f298315794719bc8718b057006c530318bf7ba3f87486cbd01feea",
-				"dweb:/ipfs/QmWrh3utksJkgKZmcVhUzp1vZyAHWaxmRB1troeuFpaQ2Y"
+				"bzz-raw://10abbb0c09fc14e838d417128bbf9ada8d53ba7ac90aebbc11d3194245cecd31",
+				"dweb:/ipfs/QmXdiascSkEwdNdwr6XygA1NtikpAoMn83Ci7xpGBh9i8P"
 			]
 		}
 	},

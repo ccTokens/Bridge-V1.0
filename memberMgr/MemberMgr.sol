@@ -5,6 +5,7 @@ import "./Ownable.sol";
 /// @title MemberMgr - add, delete, suspend and resume merchant.
 contract MemberMgr is Ownable {
     address public repository;
+    address public custodian;
     enum MerchantStatus {STOPPED, VALID}
     struct MerchantStatusData {
         MerchantStatus status;
@@ -12,7 +13,7 @@ contract MemberMgr is Ownable {
     }
 
     struct MerchantList {
-        address[] merchantList;
+        address[] list;
     }
 
     function getStatusString(MerchantStatusData memory data) internal pure returns (string memory) {
@@ -27,22 +28,36 @@ contract MemberMgr is Ownable {
     }
 
     mapping(address => mapping(uint256 => MerchantStatusData)) public merchantStatus;
-    mapping(uint256 => MerchantList) internal chainMerchantList;
+    mapping(uint256 => MerchantList) internal merchantList;
 
     function getMerchantNumber(uint256 chainid) public view returns (uint){
-        return chainMerchantList[chainid].merchantList.length;
+        return merchantList[chainid].list.length;
     }
 
     function getMerchantList(uint256 chainid) public view returns (address[] memory) {
-        return chainMerchantList[chainid].merchantList;
+        return merchantList[chainid].list;
     }
 
     function getMerchantState(uint chainid, uint index) public view returns (address _addr, string memory _status){
-        require(index < chainMerchantList[chainid].merchantList.length, "invalid index");
-        address addr = chainMerchantList[chainid].merchantList[index];
+        require(index < merchantList[chainid].list.length, "invalid index");
+        address addr = merchantList[chainid].list[index];
         MerchantStatusData memory data = merchantStatus[addr][chainid];
         _addr = addr;
         _status = getStatusString(data);
+    }
+
+    modifier onlyCustodian() {
+        require(msg.sender == custodian, "not custodian");
+        _;
+    }
+
+    event CustodianSet(address indexed custodian);
+
+    function setCustodian(address _custodian) external onlyOwner returns (bool) {
+        require(_custodian != address(0), "invalid custodian address");
+        custodian = _custodian;
+        emit CustodianSet(_custodian);
+        return true;
     }
 
     event NewMerchant(address indexed merchant);
@@ -56,7 +71,7 @@ contract MemberMgr is Ownable {
             _exist : true
             });
 
-        chainMerchantList[chainid].merchantList.push(merchant);
+        merchantList[chainid].list.push(merchant);
         emit NewMerchant(merchant);
         return true;
     }
@@ -93,10 +108,9 @@ contract MemberMgr is Ownable {
     
     event RepositorySet(address indexed repository);
 
-    function setRepository(address _repository) public onlyOwner returns (bool) {
+    function setRepository(address _repository) public onlyCustodian returns (bool) {
         require(_repository != address(0), "invalid repository address");
         repository = _repository;
-
         emit RepositorySet(repository);
         return true;
     }

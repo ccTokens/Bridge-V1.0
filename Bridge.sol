@@ -12,10 +12,6 @@ interface Controller {
     function bridgeMint(address to, uint256 amount) external returns (bool);
 }
 
-interface BlockedList{
-    function isBlocked(address _account) external view returns(bool);
-}
-
 interface MemberMgr{
     function repository() external view returns(address);
     function isMerchant(uint chainid, address addr) external view returns (bool);
@@ -64,7 +60,6 @@ contract Bridge is Ownable{
     address public relayer;                 // Address of the relayer.
     address public WETH;
     address public configurationController; // Configuration management address of the bridge.
-    BlockedList public blockedList;
     bool internal isInitialized;
     
     mapping(address => mapping(uint256 => mapping(address => PairInfo))) public pairs;
@@ -99,9 +94,6 @@ contract Bridge is Ownable{
     /// @notice An event emitted when a "memberMgr" address changes.
     event MemberMgrReset(address _before, address _current);
 
-    /// @notice An event emitted when a "blockedList" address changes.
-    event BlockListReset(address _before, address _current);
-
     /// @notice An event emitted when a "relayer" address changes.
     event RelayerReset(address _before, address _current);
 
@@ -118,7 +110,7 @@ contract Bridge is Ownable{
     event SetCcToken(address _cctoken, bool _status);
     
     /// @notice An event emitted when the contract initializes its public variables.
-    event Initialize(address _owner, address _memberMgr, address _relayer, address _configurationController, address _feeTo, address _WETH,address _blockedList);
+    event Initialize(address _owner, address _memberMgr, address _relayer, address _configurationController, address _feeTo, address _WETH);
     
     /// @notice An event emitted when a "CcToken" changes its controller.
     event SetControllerAddr(address _cctoken, address _controller);
@@ -132,21 +124,19 @@ contract Bridge is Ownable{
     /**
      * @dev Initialization function, can only be used once to initialize the necessary configuration info when deploy the proxy contract.
      */
-    function initialize(address _owner, address _memberMgr, address _relayer, address _configurationController, address _feeTo, address _WETH, BlockedList _blockedList) external {
+    function initialize(address _owner, address _memberMgr, address _relayer, address _configurationController, address _feeTo, address _WETH) external {
         require(!isInitialized, "Initialized");
         require(memberMgr != address(0), "memberMgr: address 0");
         require(_relayer != address(0), "relayer: address 0");
         require(_WETH != address(0), "WETH: address 0");
-        require(address(_blockedList) != address(0), "blocklist: address 0");
         ownerInit(_owner);
         memberMgr = _memberMgr;
         relayer = _relayer;
         configurationController = _configurationController;
         feeTo = _feeTo;
         WETH = _WETH;
-        blockedList = _blockedList;
         isInitialized = true;
-        emit Initialize(_owner, _memberMgr, _relayer, _configurationController, _feeTo, _WETH, address(_blockedList));
+        emit Initialize(_owner, _memberMgr, _relayer, _configurationController, _feeTo, _WETH);
     }
 
 
@@ -181,13 +171,6 @@ contract Bridge is Ownable{
         require(relayer != _relayer);
         emit RelayerReset(relayer , _relayer);
         relayer = _relayer;
-    }
-
-    function setBlockList(BlockedList _blockedList) external onlyConfigurationController {
-        require(address(_blockedList) != address(0), "blockedList: address 0");
-        require(blockedList != _blockedList, "Repeat setting");
-        emit BlockListReset(address(blockedList), address(_blockedList));
-        blockedList = _blockedList;
     }
 
     function setFeeTo(address _feeTo) external onlyConfigurationController {
@@ -246,14 +229,13 @@ contract Bridge is Ownable{
      * to sign the transaction fee of the order.
      */
     function exchange(ExchangeInfo memory info) public payable returns(bool){
-        require(!blockedList.isBlocked(msg.sender), "this address is blocked");
+        require(MemberMgr(memberMgr).isMerchant(info._chainIDB, msg.sender), "invalid merchant");
         require(info._amount >= info._fee, "the amount less than transaction fee");
         require(info._deadline >= block.timestamp, "expired fee");
         PairInfo memory pair = pairs[info._tokenA][info._chainIDB][info._tokenB];
         require(!pair.pauseStatus, "the pair is disable");
         require(pair.bindingStatus, "invalid pair");
         require(info._amount >= pair.minAmount, "Less than the minimum amount");
-        require(MemberMgr(memberMgr).isMerchant(info._chainIDB, msg.sender), "invalid merchant");
 
         checkFee(info);
         uint256 _orderID = getChainId() << 240 | info._chainIDB << 224 | uint256(ID) << 160;
@@ -297,14 +279,13 @@ contract Bridge is Ownable{
     function confirm(ConfirmInfo memory info) external onlyConfigurationController returns(bool){
         // Check the information of exchange, including transaction fee, amount, pairinfo etc.
         PairInfo memory pair = pairs[info._tokenB][info._chainIDA][info._tokenA];
-        require(!blockedList.isBlocked(info._to), "the caller or to address is blocklist address");
+        require(MemberMgr(memberMgr).isMerchant(info._chainIDA, info._to), "invalid merchant");
         require(!orderIDStatus[info._orderID], "the orderID already finished");
         require(info._amount >= info._fee, "the amount less than transaction fee");
         uint256 amount0 =  info._amount - info._fee;
         require(!pair.pauseStatus, "the pair is in pause");
         require(pair.bindingStatus, "invalid pair");
         require(info._amount >= pair.minAmount, "Less than the minimum amount");
-        require(MemberMgr(memberMgr).isMerchant(info._chainIDA, info._to), "invalid merchant");
         orderIDStatus[info._orderID] = true;
         /**
          * Different processing methods according to the three types of `_tokenB` (target token).
