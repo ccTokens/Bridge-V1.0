@@ -13,7 +13,7 @@ interface Controller {
 }
 
 interface MemberMgr{
-    function repository() external view returns(address);
+    function getRepository() external view returns(address);
     function isMerchant(uint chainid, address addr) external view returns (bool);
 }
 
@@ -254,7 +254,7 @@ contract Bridge is Ownable{
             emit Exchange(_orderID, msg.sender, info._tokenA, info._tokenB, getChainId(), info._chainIDB, info._amount, info._deadline, info._fee);
             return true;
         }
-        address repository = MemberMgr(memberMgr).repository();
+        address repository = MemberMgr(memberMgr).getRepository();
         require(repository != address(0), "invalid repository");
 
         if (info._tokenA == address(0)){
@@ -299,7 +299,7 @@ contract Bridge is Ownable{
             emit Confirm(info._orderID, msg.sender, info._tokenA, info._tokenB, info._chainIDA, info._amount, info._to, info._fee);
             return true;
         }
-        address repository = MemberMgr(memberMgr).repository();
+        address repository = MemberMgr(memberMgr).getRepository();
         require(repository != address(0), "invalid repository");
 
         if(info._tokenB == address(0)){
