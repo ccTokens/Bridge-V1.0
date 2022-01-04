@@ -13,11 +13,7 @@ interface Controller {
 }
 
 interface MemberMgr{
-<<<<<<< HEAD
-    function custodian() external view returns(address);
-=======
     function getCustodian() external view returns(address);
->>>>>>> c757027692dbfa043c6f27df384c61551b2a2f21
     function isMerchant(uint chainid, address addr) external view returns (bool);
 }
 
@@ -59,11 +55,7 @@ contract Bridge is Ownable{
     }
 
     uint256 public ID;                      // Cumulative order quantity.
-<<<<<<< HEAD
-    address public memberMgr;               // Manager contract of Merchant and custodian.
-=======
     address public memberMgr;               // Manager contract of Merchant and Custodian.
->>>>>>> c757027692dbfa043c6f27df384c61551b2a2f21
     address public feeTo;                   // Deposit address of transaction fee.
     address public repository;              // Reserves address.
     address public relayer;                 // Address of the relayer.
@@ -186,7 +178,7 @@ contract Bridge is Ownable{
     }
 
     function setRepository(address _repository) external {
-    	require(MemberMgr(memberMgr).custodian() == msg.sender, "Only custodian");
+    	require(MemberMgr(memberMgr).getCustodian() == msg.sender, "Only custodian");
         require(_repository != address(0), "repository: address 0");
         require(repository != _repository, "Repeat setting");
         emit RepositoryReset(repository , _repository);
@@ -296,7 +288,7 @@ contract Bridge is Ownable{
      */
     function confirm(ConfirmInfo memory info) external returns(bool){
         // Check the information of exchange, including transaction fee, amount, pairinfo etc.
-        require(MemberMgr(memberMgr).custodian() == msg.sender, "Only custodian");
+        require(MemberMgr(memberMgr).getCustodian() == msg.sender, "Only custodian");
         PairInfo memory pair = pairs[info._tokenB][info._chainIDA][info._tokenA];
         require(MemberMgr(memberMgr).isMerchant(info._chainIDA, info._to), "invalid merchant");
         require(!orderIDStatus[info._orderID], "the orderID already finished");

@@ -4,7 +4,7 @@ import "./Ownable.sol";
 
 /// @title MemberMgr - add, delete, suspend and resume merchant.
 contract MemberMgr is Ownable {
-    address public custodian;
+    address private custodian;
     enum MerchantStatus {STOPPED, VALID}
     struct MerchantStatusData {
         MerchantStatus status;
@@ -13,6 +13,10 @@ contract MemberMgr is Ownable {
 
     struct MerchantList {
         address[] list;
+    }
+
+    function getCustodian() external view returns (address) {
+        return custodian;
     }
 
     function getStatusString(MerchantStatusData memory data) internal pure returns (string memory) {
