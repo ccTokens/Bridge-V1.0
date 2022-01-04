@@ -13,7 +13,7 @@ interface Controller {
 }
 
 interface MemberMgr{
-    function getRepository() external view returns(address);
+    function getCustodian() external view returns(address);
     function isMerchant(uint chainid, address addr) external view returns (bool);
 }
 
@@ -55,7 +55,7 @@ contract Bridge is Ownable{
     }
 
     uint256 public ID;                      // Cumulative order quantity.
-    address public memberMgr;               // Manager contract of Merchant and repository.
+    address public memberMgr;               // Manager contract of Merchant and Custodian.
     address public feeTo;                   // Deposit address of transaction fee.
     address public relayer;                 // Address of the relayer.
     address public WETH;
