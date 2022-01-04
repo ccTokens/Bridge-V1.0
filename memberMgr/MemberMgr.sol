@@ -5,7 +5,6 @@ import "./Ownable.sol";
 /// @title MemberMgr - add, delete, suspend and resume merchant.
 contract MemberMgr is Ownable {
     address public custodian;
-    address private repository;
     enum MerchantStatus {STOPPED, VALID}
     struct MerchantStatusData {
         MerchantStatus status;
@@ -29,10 +28,6 @@ contract MemberMgr is Ownable {
 
     mapping(address => mapping(uint256 => MerchantStatusData)) public merchantStatus;
     mapping(uint256 => MerchantList) internal merchantList;
-
-    function getRepository() external view returns (address) {
-        return repository;
-    }
 
     function getMerchantNumber(uint256 chainid) public view returns (uint){
         return merchantList[chainid].list.length;
@@ -110,12 +105,4 @@ contract MemberMgr is Ownable {
         return merchantStatus[addr][chainid]._exist && merchantStatus[addr][chainid].status == MerchantStatus.VALID;
     }
     
-    event RepositorySet(address indexed repository);
-
-    function setRepository(address _repository) public onlyCustodian returns (bool) {
-        require(_repository != address(0), "invalid repository address");
-        repository = _repository;
-        emit RepositorySet(repository);
-        return true;
-    }
 }

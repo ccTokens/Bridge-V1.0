@@ -13,7 +13,7 @@ interface Controller {
 }
 
 interface MemberMgr{
-    function getRepository() external view returns(address);
+    function custodian() external view returns(address);
     function isMerchant(uint chainid, address addr) external view returns (bool);
 }
 
@@ -55,8 +55,9 @@ contract Bridge is Ownable{
     }
 
     uint256 public ID;                      // Cumulative order quantity.
-    address public memberMgr;               // Manager contract of Merchant and repository.
+    address public memberMgr;               // Manager contract of Merchant and custodian.
     address public feeTo;                   // Deposit address of transaction fee.
+    address public repository;              // Reserves address.
     address public relayer;                 // Address of the relayer.
     address public WETH;
     address public configurationController; // Configuration management address of the bridge.
@@ -93,6 +94,9 @@ contract Bridge is Ownable{
     
     /// @notice An event emitted when a "memberMgr" address changes.
     event MemberMgrReset(address _before, address _current);
+    
+    /// @notice An event emitted when a "repository" address changes.
+    event RepositoryReset(address _before, address _current);
 
     /// @notice An event emitted when a "relayer" address changes.
     event RelayerReset(address _before, address _current);
@@ -126,7 +130,7 @@ contract Bridge is Ownable{
      */
     function initialize(address _owner, address _memberMgr, address _relayer, address _configurationController, address _feeTo, address _WETH) external {
         require(!isInitialized, "Initialized");
-        require(memberMgr != address(0), "memberMgr: address 0");
+        require(_memberMgr != address(0), "memberMgr: address 0");
         require(_relayer != address(0), "relayer: address 0");
         require(_WETH != address(0), "WETH: address 0");
         ownerInit(_owner);
@@ -173,6 +177,14 @@ contract Bridge is Ownable{
         relayer = _relayer;
     }
 
+    function setRepository(address _repository) external {
+    	require(MemberMgr(memberMgr).custodian() == msg.sender, "Only custodian");
+        require(_repository != address(0), "repository: address 0");
+        require(repository != _repository, "Repeat setting");
+        emit RepositoryReset(repository , _repository);
+        repository = _repository;
+    }
+
     function setFeeTo(address _feeTo) external onlyConfigurationController {
         require(_feeTo != address(0), "feeTo: address 0");
         require(feeTo != _feeTo, "Repeat setting");
@@ -181,7 +193,7 @@ contract Bridge is Ownable{
     }
 
     function setMemberMgr(address _memberMgr) external onlyOwner {
-        require(_memberMgr != address(0), "repository: address 0");
+        require(_memberMgr != address(0), "_memberMgr: address 0");
         require(memberMgr != _memberMgr, "Repeat setting");
         emit MemberMgrReset(memberMgr , _memberMgr);
         memberMgr = _memberMgr;
@@ -254,8 +266,6 @@ contract Bridge is Ownable{
             emit Exchange(_orderID, msg.sender, info._tokenA, info._tokenB, getChainId(), info._chainIDB, info._amount, info._deadline, info._fee);
             return true;
         }
-        address repository = MemberMgr(memberMgr).getRepository();
-        require(repository != address(0), "invalid repository");
 
         if (info._tokenA == address(0)){
             require(msg.value == info._amount, "invalid amount");
@@ -276,8 +286,9 @@ contract Bridge is Ownable{
      * @dev After relayer confirms the user's cross-chain request, 
      * the bridge controller will call this function to mint/transfer tokenB to the destination address on the target chain.
      */
-    function confirm(ConfirmInfo memory info) external onlyConfigurationController returns(bool){
+    function confirm(ConfirmInfo memory info) external returns(bool){
         // Check the information of exchange, including transaction fee, amount, pairinfo etc.
+        require(MemberMgr(memberMgr).custodian() == msg.sender, "Only custodian");
         PairInfo memory pair = pairs[info._tokenB][info._chainIDA][info._tokenA];
         require(MemberMgr(memberMgr).isMerchant(info._chainIDA, info._to), "invalid merchant");
         require(!orderIDStatus[info._orderID], "the orderID already finished");
@@ -299,8 +310,6 @@ contract Bridge is Ownable{
             emit Confirm(info._orderID, msg.sender, info._tokenA, info._tokenB, info._chainIDA, info._amount, info._to, info._fee);
             return true;
         }
-        address repository = MemberMgr(memberMgr).getRepository();
-        require(repository != address(0), "invalid repository");
 
         if(info._tokenB == address(0)){
             IERC20(WETH).safeTransferFrom(repository, address(this), amount0);
