@@ -2,7 +2,7 @@
 pragma solidity  = 0.8.9;
 import "./Ownable.sol";
 
-/// @title MemberMgr - add, delete, suspend and resume merchant.
+/// @title MemberMgr - add, delete, suspend and resume merchant; set the custodian address.
 contract MemberMgr is Ownable {
     address private custodian;
     enum MerchantStatus {STOPPED, VALID}
@@ -49,11 +49,6 @@ contract MemberMgr is Ownable {
         _status = getStatusString(data);
     }
 
-    modifier onlyCustodian() {
-        require(msg.sender == custodian, "not custodian");
-        _;
-    }
-
     event CustodianSet(address indexed custodian);
 
     function setCustodian(address _custodian) external onlyOwner returns (bool) {
@@ -63,7 +58,7 @@ contract MemberMgr is Ownable {
         return true;
     }
 
-    event NewMerchant(address indexed merchant);
+    event NewMerchant(address indexed merchant, uint256 chainId);
 
     function addMerchant(uint chainid, address merchant) external onlyOwner returns (bool) {
         require(merchant != address(0), "invalid merchant address");
@@ -75,11 +70,11 @@ contract MemberMgr is Ownable {
             });
 
         merchantList[chainid].list.push(merchant);
-        emit NewMerchant(merchant);
+        emit NewMerchant(merchant, chainid);
         return true;
     }
 
-    event MerchantStopped(address indexed merchant);
+    event MerchantStopped(address indexed merchant, uint256 chainId);
 
     function stopMerchant(uint chainid, address merchant) external onlyOwner returns (bool) {
         require(merchant != address(0), "invalid merchant address");
@@ -88,11 +83,11 @@ contract MemberMgr is Ownable {
         require(data.status == MerchantStatus.VALID, "invalid status");
         merchantStatus[merchant][chainid].status = MerchantStatus.STOPPED;
 
-        emit MerchantStopped(merchant);
+        emit MerchantStopped(merchant, chainid);
         return true;
     }
 
-    event MerchantResumed(address indexed merchant);
+    event MerchantResumed(address indexed merchant, uint256 chainId);
 
     function resumeMerchant(uint chainid, address merchant) external onlyOwner returns (bool) {
         require(merchant != address(0), "invalid merchant address");
@@ -101,7 +96,7 @@ contract MemberMgr is Ownable {
         require(data.status == MerchantStatus.STOPPED, "invalid status");
         merchantStatus[merchant][chainid].status = MerchantStatus.VALID;
 
-        emit MerchantResumed(merchant);
+        emit MerchantResumed(merchant, chainid);
         return true;
     }
 
