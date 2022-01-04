@@ -13,7 +13,11 @@ interface Controller {
 }
 
 interface MemberMgr{
+<<<<<<< HEAD
     function custodian() external view returns(address);
+=======
+    function getCustodian() external view returns(address);
+>>>>>>> c757027692dbfa043c6f27df384c61551b2a2f21
     function isMerchant(uint chainid, address addr) external view returns (bool);
 }
 
@@ -55,7 +59,11 @@ contract Bridge is Ownable{
     }
 
     uint256 public ID;                      // Cumulative order quantity.
+<<<<<<< HEAD
     address public memberMgr;               // Manager contract of Merchant and custodian.
+=======
+    address public memberMgr;               // Manager contract of Merchant and Custodian.
+>>>>>>> c757027692dbfa043c6f27df384c61551b2a2f21
     address public feeTo;                   // Deposit address of transaction fee.
     address public repository;              // Reserves address.
     address public relayer;                 // Address of the relayer.
