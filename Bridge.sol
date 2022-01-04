@@ -283,7 +283,7 @@ contract Bridge is Ownable{
     }
 
     /**
-     * @dev After relayer confirms the user's cross-chain request, 
+     * @dev After custodian confirms the user's cross-chain request, 
      * the bridge controller will call this function to mint/transfer tokenB to the destination address on the target chain.
      */
     function confirm(ConfirmInfo memory info) external returns(bool){
