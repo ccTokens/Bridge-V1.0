@@ -21,8 +21,6 @@
 
 **Controller:** [to be added](https://etherscan.io/address)
 
-**Blocklist:** [to be added](https://etherscan.io/address)
-
 ## Smart Contracts 
 ### On smartBCH
 **Bridge:** [to be added](https://etherscan.io/address)
@@ -30,8 +28,6 @@
 **Member Manager:** [to be added](https://etherscan.io/address)
 
 **Controller:** [to be added](https://etherscan.io/address)
-
-**Blocklist:** [to be added](https://etherscan.io/address)
 
 ## Custodian and the Corresponding ETH Address
 [Cactus Custody](https://www.mycactus.com)         
