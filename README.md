@@ -10,18 +10,18 @@
 
 ## Smart Contracts 
 ### On Ethereum
-**Bridge:** [to be added](https://etherscan.io/address)
+**Bridge:** [0xCFc4db8515807262bdA0EFC928B28CfD76605EeC](https://etherscan.io/address/0xCFc4db8515807262bdA0EFC928B28CfD76605EeC)
 
-**Member Manager:** [to be added](https://etherscan.io/address)
+**Member Manager:** [0xC7654aE58376541Cc410E8745c57a0C465FDF8E4](https://etherscan.io/address/0xC7654aE58376541Cc410E8745c57a0C465FDF8E4)
 
 **Controller:** [0x7178119e987d3Eb893b88bB55F34157245734BD8](https://etherscan.io/address/0x7178119e987d3Eb893b88bB55F34157245734BD8)
 
 
 ## Smart Contracts 
 ### On smartBCH
-**Bridge:** [to be added](https://etherscan.io/address)
+**Bridge:** [0x400D6d489adaC736e4AcBD60D76b20564418fD17](https://etherscan.io/address/0x400D6d489adaC736e4AcBD60D76b20564418fD17)
 
-**Member Manager:** [to be added](https://etherscan.io/address)
+**Member Manager:** [0xb3736500c7a6A720Df41Eec6d7f93935Ef56B6b2](https://etherscan.io/address/0xb3736500c7a6A720Df41Eec6d7f93935Ef56B6b2)
 
 **Controller:** [0x7178119e987d3Eb893b88bB55F34157245734BD8](https://www.smartscan.cash/address/0x7178119e987d3Eb893b88bB55F34157245734BD8)
 
