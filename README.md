@@ -37,4 +37,4 @@ Address: [to be added](https://etherscan.io/address)
 
 
 ## Audit Report
-Cross-Chain Tokens smart contract codes have been audited by a third-party, and available [here](https://www.crosschain.network/PeckShield-Audit-Report-ccTokens-v1.0.pdf).
+Cross-Chain Tokens smart contract codes have been audited by a third-party, and available [here](https://www.crosschain.network/SlowMist-Audit-Report-ccTokens1.0.pdf).
